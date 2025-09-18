@@ -128,6 +128,33 @@
             }
         });
 
+        async function pollJobStatus(jobId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`http://127.0.0.1:5000/api/status/${jobId}`);
+                    const result = await response.json();
+
+                    if (result.status === 'COMPLETE') {
+                        clearInterval(interval);
+                        transcriptArea.value = result.transcription;
+                        translationArea.value = result.translation;
+                        transcribeBtn.disabled = false;
+                        transcribeBtn.textContent = 'Transcribe';
+                    } else if (result.status === 'FAILED') {
+                        clearInterval(interval);
+                        throw new Error(result.error || 'Job failed for an unknown reason.');
+                    }
+                    // If status is 'PENDING', the loop continues
+                } catch (error) {
+                    clearInterval(interval);
+                    transcriptArea.value = `Error polling for status: ${error.message}`;
+                    translationArea.value = '';
+                    transcribeBtn.disabled = false;
+                    transcribeBtn.textContent = 'Transcribe';
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
         transcribeBtn.addEventListener('click', async () => {
             const file = audioFileInput.files[0];
             if (!file) {
@@ -140,10 +167,10 @@
             formData.append('source_lang', sourceLangSelect.value);
             formData.append('target_lang', targetLangSelect.value);
 
-            transcriptArea.value = 'Processing...';
-            translationArea.value = 'Processing...';
+            transcriptArea.value = 'Uploading and starting job...';
+            translationArea.value = '';
             transcribeBtn.disabled = true;
-            transcribeBtn.textContent = 'Transcribing...';
+            transcribeBtn.textContent = 'Processing...';
 
             try {
                 const response = await fetch('http://127.0.0.1:5000/api/transcribe', {
@@ -153,16 +180,14 @@
 
                 const result = await response.json();
 
-                if (response.ok) {
-                    transcriptArea.value = result.transcription;
-                    translationArea.value = result.translation;
+                if (response.ok && result.job_id) {
+                    transcriptArea.value = `Job started (ID: ${result.job_id}). Polling for status...`;
+                    pollJobStatus(result.job_id);
                 } else {
-                    throw new Error(result.error || 'An unknown error occurred.');
+                    throw new Error(result.error || 'Failed to start job.');
                 }
             } catch (error) {
                 transcriptArea.value = `Error: ${error.message}`;
-                translationArea.value = '';
-            } finally {
                 transcribeBtn.disabled = false;
                 transcribeBtn.textContent = 'Transcribe';
             }
