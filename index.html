@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcribe & Translate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center font-sans">
+    <div class="container mx-auto p-8 bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full">
+        <h1 class="text-4xl font-bold text-center mb-8">Audio Transcribe & Translate</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+                <label for="source_language" class="block mb-2 text-sm font-medium">Source Language (Transcription)</label>
+                <select id="source_language" name="source_lang" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <option value="en-US">English</option>
+                    <option value="es-ES">Spanish</option>
+                    <option value="fa-IR">Persian</option>
+                    <option value="ja-JP">Japanese</option>
+                    <option value="cmn-CN">Chinese (Mandarin)</option>
+                    <option value="ru-RU">Russian</option>
+                </select>
+            </div>
+            <div>
+                <label for="target_language" class="block mb-2 text-sm font-medium">Target Language (Translation)</label>
+                <select id="target_language" name="target_lang" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fa">Persian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="zh-CN">Chinese (Mandarin)</option>
+                    <option value="ru">Russian</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center w-full mb-8">
+            <label for="audio_file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-700 hover:bg-gray-600">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg class="w-8 h-8 mb-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                    </svg>
+                    <p class="mb-2 text-sm text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                    <p id="file-name" class="text-xs text-gray-400">No file selected</p>
+                </div>
+                <input id="audio_file" type="file" class="hidden" />
+            </label>
+            <button id="transcribe-btn" type="button" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg text-lg">
+                Transcribe
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="transcript" class="block mb-2 text-sm font-medium">Original Transcript</label>
+                <textarea id="transcript" rows="10" class="block p-2.5 w-full text-sm text-gray-300 bg-gray-700 rounded-lg border border-gray-600 focus:ring-blue-500 focus:border-blue-500" readonly></textarea>
+                <button id="save-transcript-btn" type="button" class="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg w-full">
+                    Save Transcript
+                </button>
+            </div>
+            <div>
+                <label for="translation" class="block mb-2 text-sm font-medium">Translation</label>
+                <textarea id="translation" rows="10" class="block p-2.5 w-full text-sm text-gray-300 bg-gray-700 rounded-lg border border-gray-600 focus:ring-blue-500 focus:border-blue-500" readonly></textarea>
+                <button id="save-translation-btn" type="button" class="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg w-full">
+                    Save Translation
+                </button>
+            </div>
+        </div>
+        <div class="mt-8 text-center">
+            <button id="clear-btn" type="button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-8 rounded-lg">
+                Clear
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const audioFileInput = document.getElementById('audio_file');
+        const fileNameDisplay = document.getElementById('file-name');
+        const transcribeBtn = document.getElementById('transcribe-btn');
+        const transcriptArea = document.getElementById('transcript');
+        const translationArea = document.getElementById('translation');
+        const sourceLangSelect = document.getElementById('source_language');
+        const targetLangSelect = document.getElementById('target_language');
+        const saveTranscriptBtn = document.getElementById('save-transcript-btn');
+        const saveTranslationBtn = document.getElementById('save-translation-btn');
+        const clearBtn = document.getElementById('clear-btn');
+
+        function download(filename, text) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        saveTranscriptBtn.addEventListener('click', () => {
+            if (transcriptArea.value && !transcriptArea.value.startsWith('Error:')) {
+                download('transcript.txt', transcriptArea.value);
+            } else {
+                alert('No transcript to save.');
+            }
+        });
+
+        saveTranslationBtn.addEventListener('click', () => {
+            if (translationArea.value && !translationArea.value.startsWith('Error:')) {
+                download('translation.txt', translationArea.value);
+            } else {
+                alert('No translation to save.');
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            audioFileInput.value = '';
+            fileNameDisplay.textContent = 'No file selected';
+            transcriptArea.value = '';
+            translationArea.value = '';
+        });
+
+        audioFileInput.addEventListener('change', () => {
+            const file = audioFileInput.files[0];
+            if (file) {
+                fileNameDisplay.textContent = file.name;
+            } else {
+                fileNameDisplay.textContent = 'No file selected';
+            }
+        });
+
+        transcribeBtn.addEventListener('click', async () => {
+            const file = audioFileInput.files[0];
+            if (!file) {
+                alert('Please select an audio file first.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('audio_file', file);
+            formData.append('source_lang', sourceLangSelect.value);
+            formData.append('target_lang', targetLangSelect.value);
+
+            transcriptArea.value = 'Processing...';
+            translationArea.value = 'Processing...';
+            transcribeBtn.disabled = true;
+            transcribeBtn.textContent = 'Transcribing...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/transcribe', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    transcriptArea.value = result.transcription;
+                    translationArea.value = result.translation;
+                } else {
+                    throw new Error(result.error || 'An unknown error occurred.');
+                }
+            } catch (error) {
+                transcriptArea.value = `Error: ${error.message}`;
+                translationArea.value = '';
+            } finally {
+                transcribeBtn.disabled = false;
+                transcribeBtn.textContent = 'Transcribe';
+            }
+        });
+    </script>
+</body>
+</html>
